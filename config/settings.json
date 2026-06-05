@@ -1,0 +1,24 @@
+{
+    "_comment": "WinRefresh configuration — all values are OVERRIDES. Omit any key (or set to null) to use adaptive defaults.",
+    "thresholds": {
+        "gdi_per_process": 9000,
+        "user_per_process": 9000,
+        "non_paged_pool_mb": 2048,
+        "dwm_working_set_mb": 1024,
+        "dwm_handles": 5000,
+        "explorer_gdi": 9000,
+        "handle_threshold": null,
+        "shell_extensions_count": 50
+    },
+    "cleanup": {
+        "temp_min_age_hours": 24,
+        "temp_min_size_mb": 500,
+        "thumbnail_cache_interval_days": 30,
+        "dwm_cooldown_hours": 24
+    },
+    "logging": {
+        "max_log_size_mb": 10,
+        "max_archives": 5,
+        "archive_retention_days": 30
+    }
+}
