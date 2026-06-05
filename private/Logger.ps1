@@ -4,7 +4,7 @@
 # PS 5.1-compatible PSCustomObject → Hashtable conversion (replaces -AsHashtable from PS 6+)
 # RECURSIVE: nested PSCustomObjects are converted to nested hashtables
 function ConvertTo-Hashtable {
-    param([Parameter(Mandatory)][object]$InputObject)
+    param([object]$InputObject)
     $ht = @{}
     if ($null -eq $InputObject) { return $ht }
     foreach ($prop in $InputObject.PSObject.Properties) {
@@ -116,6 +116,10 @@ function Get-WinRefreshLog {
     $files = @()
     if (Test-Path $script:LogDir) {
         $files = Get-ChildItem -Path $script:LogDir -Filter "*.jsonl" | Sort-Object LastWriteTime
+        # Also include current log file (rotated files are .jsonl, current is .log)
+        if (Test-Path $script:CurrentLogFile) {
+            $files += Get-Item $script:CurrentLogFile
+        }
     }
     $results = @()
     foreach ($file in $files) {
