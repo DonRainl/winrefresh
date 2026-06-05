@@ -122,11 +122,10 @@ $taskSettings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
     -AllowStartIfOnBatteries:$false `
-    -StopIfGoingOnBatteries:$true `
     -Compatibility Win8
 
 $taskPrincipal = New-ScheduledTaskPrincipal -UserId $currentUserSid `
-    -LogonType InteractiveToken `
+    -LogonType Interactive `
     -RunLevel Highest
 
 try {

@@ -100,7 +100,12 @@ function Get-AdaptiveThresholds {
 }
 
 function Get-SystemUptime {
-    $os = Get-CimInstance -Class Win32_OperatingSystem | Select-Object -ExpandProperty LastBootUpTime
+    $os = Get-CimInstance -Class Win32_OperatingSystem -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty LastBootUpTime
+    if (-not $os) {
+        Write-Log -Level WARN -Operation "Diagnostics" -Message "Cannot read system uptime — CIM/WMI unavailable"
+        return $null
+    }
     return (Get-Date) - $os
 }
 

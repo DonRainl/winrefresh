@@ -138,10 +138,10 @@ $th = Get-AdaptiveThresholds
 $diag = Get-SystemDiagnostics -Thresholds $th
 $plan = Get-DecisionPlan -Diagnostics $diag -ConfigThresholds @{} -IsManual $false
 Assert-True ($plan -is [hashtable] -or $plan -is [System.Collections.Specialized.OrderedDictionary]) "Get-DecisionPlan returns ordered dictionary or hashtable"
-Assert-True ($null -ne $plan['ShouldRestartExplorer'] -or $true) "Plan has ShouldRestartExplorer key"
-Assert-True ($null -ne $plan['ShouldRestartDwm'] -or $true) "Plan has ShouldRestartDwm key"
-Assert-True ($null -ne $plan['Level3Warnings'] -or $true) "Plan has Level3Warnings key"
-Assert-True ($null -ne $plan['Summary'] -or $true) "Plan has Summary key"
+Assert-True ($null -ne $plan['ShouldRestartExplorer']) "Plan has ShouldRestartExplorer key"
+Assert-True ($null -ne $plan['ShouldRestartDwm']) "Plan has ShouldRestartDwm key"
+Assert-True ($null -ne $plan['Level3Warnings']) "Plan has Level3Warnings key"
+Assert-True ($null -ne $plan['Summary']) "Plan has Summary key"
 
 # Test 5: Config → Decision pipeline roundtrip
 Write-Host "[5] Config-to-Decision pipeline:" -ForegroundColor Cyan
