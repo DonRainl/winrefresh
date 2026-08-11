@@ -89,11 +89,17 @@ try {
 
 # 10. Write registry
 Write-Host "Writing registry..." -ForegroundColor Gray
+# Version — read from VERSION file (single source of truth, shared with main script)
+$version = '1.0.0'
+$versionFile = Join-Path $sourceRoot 'VERSION'
+if (Test-Path $versionFile) {
+    try { $version = (Get-Content $versionFile -Raw).Trim() } catch {}
+}
 if (-not (Test-Path "HKLM:\SOFTWARE\WinRefresh")) {
     New-Item -Path "HKLM:\SOFTWARE\WinRefresh" -Force | Out-Null
 }
 Set-ItemProperty -Path "HKLM:\SOFTWARE\WinRefresh" -Name "InstallPath" -Value $installPath -Force
-Set-ItemProperty -Path "HKLM:\SOFTWARE\WinRefresh" -Name "Version" -Value "1.0.0" -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\WinRefresh" -Name "Version" -Value $version -Force
 Set-ItemProperty -Path "HKLM:\SOFTWARE\WinRefresh" -Name "InstallDate" -Value (Get-Date -Format 'o') -Force
 Write-Host "  Done." -ForegroundColor Green
 

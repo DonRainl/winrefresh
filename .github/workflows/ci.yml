@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Tests (Windows PowerShell)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Syntax check (all modules)
+        shell: pwsh
+        run: ./tests/syntax-check.ps1
+
+      - name: Logger unit tests
+        shell: pwsh
+        run: ./tests/logger-tests.ps1
+
+      - name: Decision engine + config tests
+        shell: pwsh
+        run: ./tests/decision-config-tests.ps1
+
+      - name: Cross-module integration tests
+        shell: pwsh
+        run: ./tests/integration-test.ps1

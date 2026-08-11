@@ -14,6 +14,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:StartTime = Get-Date
 
+# Version — read from VERSION file (single source of truth, shared with installer)
+$script:Version = '1.0.0'
+$versionFile = Join-Path $PSScriptRoot 'VERSION'
+if (Test-Path $versionFile) {
+    try { $script:Version = (Get-Content $versionFile -Raw).Trim() } catch {}
+}
+
 # ===== Startup Checks =====
 
 # Check ConstrainedLanguage mode (Add-Type won't work)
@@ -57,7 +64,7 @@ $logArchives = if ($null -ne $logConfig['max_archives']) { [int]$logConfig['max_
 $logRetention = if ($null -ne $logConfig['archive_retention_days']) { [int]$logConfig['archive_retention_days'] } else { 30 }
 Initialize-Logger -MaxSizeMB $logMaxSize -Archives $logArchives -RetentionDays $logRetention
 
-Write-Log -Level INFO -Operation "Startup" -Message "WinRefresh starting, Manual=$IsManual, PID=$PID"
+Write-Log -Level INFO -Operation "Startup" -Message "WinRefresh v$script:Version starting, Manual=$IsManual, PID=$PID"
 
 # ===== Concurrency Protocol =====
 
@@ -158,7 +165,7 @@ try {
     # ===== Diagnostics =====
     Update-LockPhase -Phase "Diagnostics"
     Write-Log -Level INFO -Operation "Main" -Message "Running diagnostics..."
-    Write-Host "WinRefresh — Windows UI Performance Refresh" -ForegroundColor Green
+    Write-Host "WinRefresh v$script:Version — Windows UI Performance Refresh" -ForegroundColor Green
     Write-Host "  Mode: $(if ($IsManual) { 'Manual' } else { 'Unattended (Task Scheduler)' })" -ForegroundColor Gray
     Write-Host ""
 

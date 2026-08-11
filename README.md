@@ -1,5 +1,12 @@
 # WinRefresh
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)](https://github.com/PowerShell/PowerShell)
+[![Windows](https://img.shields.io/badge/Windows-10%201607%2B%20%7C%2011-blue)](#系统要求)
+[![CI](https://github.com/DonRainl/windows-refresh/actions/workflows/ci.yml/badge.svg)](https://github.com/DonRainl/windows-refresh/actions/workflows/ci.yml)
+
+> 简体中文 | [English](README.en.md)
+
 Windows UI 性能自动维护工具 — 解决长时间不关机后 UI 交互卡顿问题，无需重启电脑。
 
 ## 解决的问题
@@ -11,6 +18,21 @@ Windows 11 连续运行 3-7 天后出现 UI 卡顿（窗口拖动拖影、Alt+Ta
 -   DWM（桌面窗口管理器）问题
 -   句柄泄漏
 -   图标/缩略图缓存膨胀
+
+## 运行效果
+
+<!-- 在此添加实际运行截图：docs/screenshots/manual-run.png（建议截取手动模式下完整输出，含诊断指标与 Summary） -->
+
+```
+WinRefresh — Windows UI Performance Refresh
+  Mode: Manual
+  Uptime: 5d 8h 12m
+  RAM: 32 GB
+  ...
+=== WinRefresh Summary ===
+  Level 1 cleanup: completed
+  Duration: 3.2s
+```
 
 ## 系统要求
 
@@ -80,6 +102,24 @@ Get-WinRefreshLog -Level WARN,ERROR,CRITICAL -After (Get-Date).AddDays(-7)
 Export-WinRefreshLog -Format Csv
 ```
 
+## 运行测试
+
+所有测试脚本均返回「失败用例数」作为退出码（0 = 全部通过），CI 会在每次 push/PR 时自动运行：
+
+```powershell
+# 1. 语法检查（所有模块）
+.\tests\syntax-check.ps1
+
+# 2. Logger 单元测试
+.\tests\logger-tests.ps1
+
+# 3. 决策引擎 + 配置解析测试
+.\tests\decision-config-tests.ps1
+
+# 4. 跨模块集成测试（会调用真实系统 API）
+.\tests\integration-test.ps1
+```
+
 ## 卸载
 
 以管理员身份运行：
@@ -95,6 +135,12 @@ Export-WinRefreshLog -Format Csv
 -   **崩溃恢复**：自动检测崩溃的上一实例并恢复
 -   **Explorer 安全重启**：用户在场检测 → 全屏/演示检测 → 文件复制检测 → 15 秒倒计时 → 渐进式关闭
 -   **配置容错**：3 层防御（缺失→默认 / 损坏→默认 / 越界→钳位）
+
+## ⚠️ 风险声明
+
+- WinRefresh 在手动模式下检测到问题时会**重启 Explorer 和 DWM**，屏幕可能出现闪烁，基于 Explorer 的窗口中的**未保存内容可能受影响**。运行前请保存工作。
+- DWM 重启受 24 小时冷却期限制，避免频繁打断。
+- 本工具按 "AS IS" 提供，作者不对使用本工具造成的任何损害负责。
 
 ## 文件结构
 
@@ -118,3 +164,19 @@ C:\ProgramData\WinRefresh\
 ├── running.lock               运行锁文件
 └── state.json                 持久化状态
 ```
+
+## 贡献
+
+欢迎提交 PR 与 Issue。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解开发环境、代码约定与提交流程；提交前请确保 4 个测试套件全部通过。架构说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
+## 安全
+
+WinRefresh 需要管理员权限且能重启 Explorer/DWM，属于系统级工具。安全漏洞请通过 [SECURITY.md](SECURITY.md) 中的渠道**私密报告**，不要公开提交漏洞类 issue。
+
+## 更新日志
+
+见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 许可证
+
+[MIT](LICENSE) © DonRainl

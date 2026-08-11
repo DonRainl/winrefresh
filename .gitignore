@@ -1,1 +1,25 @@
-/docs
+# --- 本地工具 / 编辑器 ---
+.claude/
+.vscode/
+.idea/
+*.suo
+*.user
+
+# --- 运行时产物（安装后生成于 ProgramData，不应入库） ---
+logs/
+state.json
+running.lock
+*.log
+*.jsonl
+*.tmp
+
+# --- 测试临时目录 ---
+WinRefresh_Test/
+
+# --- Windows ---
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- 打包产物 ---
+*.zip
