@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)](https://github.com/PowerShell/PowerShell)
 [![Windows](https://img.shields.io/badge/Windows-10%201607%2B%20%7C%2011-blue)](#system-requirements)
-[![CI](https://github.com/DonRainl/windows-refresh/actions/workflows/ci.yml/badge.svg)](https://github.com/DonRainl/windows-refresh/actions/workflows/ci.yml)
+[![CI](https://github.com/DonRainl/winrefresh/actions/workflows/ci.yml/badge.svg)](https://github.com/DonRainl/winrefresh/actions/workflows/ci.yml)
 
 > [简体中文](README.md) | English
 

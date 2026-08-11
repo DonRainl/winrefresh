@@ -31,5 +31,5 @@
 - 安装/卸载脚本：复制到 Program Files、注册计划任务（每日 3:00 + 登录时）、事件日志源、注册表
 - 测试套件：语法检查、Logger 单元测试、决策引擎/配置测试、跨模块集成测试
 
-[Unreleased]: https://github.com/DonRainl/windows-refresh/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/DonRainl/windows-refresh/releases/tag/v1.0.0
+[Unreleased]: https://github.com/DonRainl/winrefresh/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/DonRainl/winrefresh/releases/tag/v1.0.0
