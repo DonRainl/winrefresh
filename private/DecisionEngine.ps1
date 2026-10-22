@@ -19,6 +19,14 @@ function Get-DecisionPlan {
 
     $th = $ConfigThresholds
 
+    # --- Metric 0: System uptime ---
+    $uptimeDays = if ($Diagnostics.Uptime) { $Diagnostics.Uptime.TotalDays } else { 0 }
+    $uptimeThreshold = if ($null -ne $th['uptime_warning_days']) { [int]$th['uptime_warning_days'] } else { 30 }
+    if ($uptimeDays -gt $uptimeThreshold) {
+        $daysInt = [math]::Floor($uptimeDays)
+        $plan.Summary += "System uptime high: ${daysInt} days > ${uptimeThreshold} days"
+    }
+
     # --- Metric 1: Top GDI/USER processes ---
     $gdiThreshold = if ($null -ne $th['gdi_per_process']) { [int]$th['gdi_per_process'] } else { 9000 }
     foreach ($p in $Diagnostics.TopGuiProcesses) {
@@ -51,11 +59,13 @@ function Get-DecisionPlan {
     # --- Metric 4: DWM ---
     $dwmWsThreshold = if ($null -ne $th['dwm_working_set_mb']) { [int]$th['dwm_working_set_mb'] } else { 1024 }
     $dwmHandleThreshold = if ($null -ne $th['dwm_handles']) { [int]$th['dwm_handles'] } else { 5000 }
+    $dwmThreadThreshold = if ($null -ne $th['dwm_threads']) { [int]$th['dwm_threads'] } else { 100 }
     if ($Diagnostics.DwmMetrics) {
         $dwm = $Diagnostics.DwmMetrics
         $issues = @()
         if ($dwm.WS_MB -gt $dwmWsThreshold) { $issues += "WS=$($dwm.WS_MB)MB" }
         if ($dwm.Handles -gt $dwmHandleThreshold) { $issues += "Handles=$($dwm.Handles)" }
+        if ($null -ne $dwm.Threads -and $dwm.Threads -gt $dwmThreadThreshold) { $issues += "Threads=$($dwm.Threads)" }
         if ($dwm.FramesSkipped -gt 0) { $issues += "FramesSkipped=$($dwm.FramesSkipped)" }
         if ($issues.Count -gt 0) {
             $plan.ShouldRestartDwm = $true
@@ -65,9 +75,22 @@ function Get-DecisionPlan {
 
     # --- Metric 5: Explorer ---
     $explorerGdiThreshold = if ($null -ne $th['explorer_gdi']) { [int]$th['explorer_gdi'] } else { 9000 }
-    if ($Diagnostics.ExplorerMetrics -and $Diagnostics.ExplorerMetrics.GDI -gt $explorerGdiThreshold) {
-        $plan.ShouldRestartExplorer = $true
-        $plan.Summary += "Explorer GDI=$($Diagnostics.ExplorerMetrics.GDI) > $explorerGdiThreshold"
+    $explorerHandleThreshold = if ($null -ne $th['explorer_handles']) { [int]$th['explorer_handles'] } else { 5000 }
+    $explorerThreadThreshold = if ($null -ne $th['explorer_threads']) { [int]$th['explorer_threads'] } else { 150 }
+    $explorerWsThreshold = if ($null -ne $th['explorer_working_set_mb']) { [int]$th['explorer_working_set_mb'] } else { 1024 }
+
+    if ($Diagnostics.ExplorerMetrics) {
+        $exp = $Diagnostics.ExplorerMetrics
+        $expIssues = @()
+        if ($exp.GDI -gt $explorerGdiThreshold) { $expIssues += "GDI=$($exp.GDI) > $explorerGdiThreshold" }
+        if ($null -ne $exp.Handles -and $exp.Handles -gt $explorerHandleThreshold) { $expIssues += "Handles=$($exp.Handles) > $explorerHandleThreshold" }
+        if ($null -ne $exp.Threads -and $exp.Threads -gt $explorerThreadThreshold) { $expIssues += "Threads=$($exp.Threads) > $explorerThreadThreshold" }
+        if ($null -ne $exp.WS_MB -and $exp.WS_MB -gt $explorerWsThreshold) { $expIssues += "WS=$($exp.WS_MB)MB > ${explorerWsThreshold}MB" }
+
+        if ($expIssues.Count -gt 0) {
+            $plan.ShouldRestartExplorer = $true
+            $plan.Summary += "Explorer issues: $($expIssues -join ', ')"
+        }
     }
 
     # --- Metric 6: Free PTE ---

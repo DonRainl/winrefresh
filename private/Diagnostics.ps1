@@ -152,11 +152,14 @@ function Get-ExplorerMetrics {
     if (-not $exp) { return $null }
     try {
         $handle = $exp.Handle
+        $threadCount = 0
+        try { $threadCount = $exp.Threads.Count } catch {}
         return [PSCustomObject]@{
             Id      = $exp.Id
             GDI     = [math]::Max(0, $script:Win32Type::GetGuiResources($handle, 0))
             USER    = [math]::Max(0, $script:Win32Type::GetGuiResources($handle, 1))
             Handles = $exp.Handles
+            Threads = $threadCount
             WS_MB   = [math]::Round($exp.WorkingSet64 / 1MB, 1)
         }
     } catch { return $null }
@@ -169,6 +172,8 @@ function Get-DwmMetrics {
     if (-not $dwm) { return $null }
 
     $skipped = 0
+    $dwmThreads = 0
+    try { $dwmThreads = $dwm.Threads.Count } catch {}
     try {
         # Enumerate ALL counter sets and match by PATH pattern — set NAMES are localised
         # ("Desktop Window Manager" → "Desktopfenster-Manager" on German Windows).
@@ -195,6 +200,7 @@ function Get-DwmMetrics {
     return [PSCustomObject]@{
         Id            = $dwm.Id
         Handles       = $dwm.Handles
+        Threads       = $dwmThreads
         WS_MB         = [math]::Round($dwm.WorkingSet64 / 1MB, 1)
         FramesSkipped = $skipped
     }

@@ -6,7 +6,12 @@
         "non_paged_pool_mb": 2048,
         "dwm_working_set_mb": 1024,
         "dwm_handles": 5000,
+        "dwm_threads": 100,
         "explorer_gdi": 9000,
+        "explorer_handles": 5000,
+        "explorer_threads": 150,
+        "explorer_working_set_mb": 1024,
+        "uptime_warning_days": 30,
         "handle_threshold": null,
         "shell_extensions_count": 50
     },

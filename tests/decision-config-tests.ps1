@@ -51,7 +51,8 @@ function New-MockDiagnostic {
         $FreeSystemPTE_MB = 2048,
         $PteThreshold = 512MB,
         $GpuVram = @(),
-        $ShellExtensionCount = 30
+        $ShellExtensionCount = 30,
+        $Uptime = $null
     )
     return [PSCustomObject]@{
         TopGuiProcesses     = $TopGuiProcesses
@@ -64,8 +65,15 @@ function New-MockDiagnostic {
         PteThreshold        = $PteThreshold
         GpuVram             = $GpuVram
         ShellExtensionCount = $ShellExtensionCount
+        Uptime              = $Uptime
     }
 }
+
+# ===== Test 0: Uptime check =====
+Write-Host "[0] Uptime check:" -ForegroundColor Cyan
+$diag0 = New-MockDiagnostic -Uptime (New-TimeSpan -Days 45)
+$plan0 = Get-DecisionPlan -Diagnostics $diag0
+Assert-True (($plan0.Summary -join ' ') -like '*System uptime high: 45 days*') "Summary mentions high uptime"
 
 # ===== Test 1: All metrics normal → no actions =====
 Write-Host "[1] All normal — no actions:" -ForegroundColor Cyan
@@ -125,12 +133,44 @@ $plan6 = Get-DecisionPlan -Diagnostics $diag6 -IsManual $true
 Assert-True $plan6.ShouldRestartDwm "DWM restart flagged"
 Assert-True (($plan6.Summary -join ' ') -like '*FramesSkipped*') "Summary mentions frames skipped"
 
+# ===== Test 6b: DWM threads high =====
+Write-Host "[6b] DWM threads high:" -ForegroundColor Cyan
+$dwmHighThreads = [PSCustomObject]@{ WS_MB = 200; Handles = 1000; Threads = 120; FramesSkipped = 0 }
+$diag6b = New-MockDiagnostic -DwmMetrics $dwmHighThreads
+$plan6b = Get-DecisionPlan -Diagnostics $diag6b -IsManual $true
+Assert-True $plan6b.ShouldRestartDwm "DWM restart flagged on high threads"
+Assert-True (($plan6b.Summary -join ' ') -like '*Threads=120*') "Summary mentions DWM threads"
+
 # ===== Test 7: Explorer GDI threshold (metric 5) =====
 Write-Host "[7] Explorer GDI separate metric:" -ForegroundColor Cyan
 $expHigh = [PSCustomObject]@{ Id = 1000; GDI = 9200; USER = 500; Handles = 2000; WS_MB = 100 }
 $diag7 = New-MockDiagnostic -ExplorerMetrics $expHigh
 $plan7 = Get-DecisionPlan -Diagnostics $diag7 -IsManual $true
 Assert-True $plan7.ShouldRestartExplorer "Explorer restart from separate metric"
+
+# ===== Test 7b: Explorer handles high =====
+Write-Host "[7b] Explorer handles high:" -ForegroundColor Cyan
+$expHighHandles = [PSCustomObject]@{ Id = 1000; GDI = 2000; USER = 500; Handles = 6000; Threads = 50; WS_MB = 100 }
+$diag7b = New-MockDiagnostic -ExplorerMetrics $expHighHandles
+$plan7b = Get-DecisionPlan -Diagnostics $diag7b -IsManual $true
+Assert-True $plan7b.ShouldRestartExplorer "Explorer restart flagged on high handles"
+Assert-True (($plan7b.Summary -join ' ') -like '*Handles=6000*') "Summary mentions Explorer handles"
+
+# ===== Test 7c: Explorer threads high =====
+Write-Host "[7c] Explorer threads high:" -ForegroundColor Cyan
+$expHighThreads = [PSCustomObject]@{ Id = 1000; GDI = 2000; USER = 500; Handles = 2000; Threads = 200; WS_MB = 100 }
+$diag7b = New-MockDiagnostic -ExplorerMetrics $expHighThreads
+$plan7b = Get-DecisionPlan -Diagnostics $diag7b -IsManual $true
+Assert-True $plan7b.ShouldRestartExplorer "Explorer restart flagged on high threads"
+Assert-True (($plan7b.Summary -join ' ') -like '*Threads=200*') "Summary mentions Explorer threads"
+
+# ===== Test 7d: Explorer working set high =====
+Write-Host "[7d] Explorer WS_MB high:" -ForegroundColor Cyan
+$expHighWs = [PSCustomObject]@{ Id = 1000; GDI = 2000; USER = 500; Handles = 2000; Threads = 50; WS_MB = 1200 }
+$diag7c = New-MockDiagnostic -ExplorerMetrics $expHighWs
+$plan7c = Get-DecisionPlan -Diagnostics $diag7c -IsManual $true
+Assert-True $plan7c.ShouldRestartExplorer "Explorer restart flagged on high working set"
+Assert-True (($plan7c.Summary -join ' ') -like '*WS=1200MB*') "Summary mentions Explorer memory"
 
 # ===== Test 8: PTE critical =====
 Write-Host "[8] PTE critical low:" -ForegroundColor Cyan
