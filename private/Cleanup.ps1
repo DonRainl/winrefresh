@@ -214,7 +214,7 @@ function Test-FileCopyInProgress {
 }
 
 function Wait-Countdown {
-    param([int]$Seconds = 15, [int]$CheckInterval = 3)
+    param([int]$Seconds = 15, [int]$CheckInterval = 3, [switch]$BypassUserPresence)
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Yellow
     Write-Host "  WARNING: Explorer/DWM will be restarted" -ForegroundColor Yellow
@@ -227,21 +227,23 @@ function Wait-Countdown {
         Write-Host "Restarting in $i seconds... (press Ctrl+C to cancel)" -ForegroundColor Cyan
         Start-Sleep -Seconds $remaining
 
-        # Re-check both user activity AND notification state (not just idle time)
-        $idle = Get-UserIdleSeconds
-        $notifState = Get-UserNotificationState
-        if ($idle -gt 30 -or $notifState -in @('D3D_FULL_SCREEN', 'PRESENTATION_MODE', 'QUNS_APP')) {
-            Write-Host "User state changed — restart cancelled" -ForegroundColor Yellow
-            Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Cancelled: user state changed during countdown (idle=$idle s, state=$notifState)"
-            return $false
+        if (-not $BypassUserPresence) {
+            # Re-check notification state (e.g. user entered fullscreen game/presentation)
+            $notifState = Get-UserNotificationState
+            if ($notifState -in @('D3D_FULL_SCREEN', 'PRESENTATION_MODE', 'QUNS_APP')) {
+                Write-Host "User state changed ($notifState) — restart cancelled" -ForegroundColor Yellow
+                Write-Log -Level WARN -Operation "RestartCountdown" -Message "Cancelled: user entered blocking state ($notifState)"
+                return $false
+            }
         }
     }
     return $true
 }
 
 function Invoke-ExplorerRestart {
+    param([switch]$BypassUserPresence)
     # Returns: 'restarted', 'blocked', 'skipped'
-    if (-not (Test-UserPresent)) {
+    if (-not $BypassUserPresence -and -not (Test-UserPresent)) {
         Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Blocked: user not present"
         return 'blocked'
     }
@@ -251,7 +253,7 @@ function Invoke-ExplorerRestart {
         return 'blocked'
     }
 
-    if (-not (Wait-Countdown)) { return 'blocked' }
+    if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
 
     Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Starting safe restart"
 
@@ -307,7 +309,7 @@ function Invoke-ExplorerRestart {
 }
 
 function Invoke-DwmRestart {
-    param([bool]$OverrideCoolDown = $false, [string]$StatePath = "$env:ProgramData\WinRefresh\state.json")
+    param([bool]$OverrideCoolDown = $false, [string]$StatePath = "$env:ProgramData\WinRefresh\state.json", [switch]$BypassUserPresence)
 
     # Check cooldown
     if (-not $OverrideCoolDown) {
@@ -326,7 +328,7 @@ function Invoke-DwmRestart {
         }
     }
 
-    if (-not (Test-UserPresent)) {
+    if (-not $BypassUserPresence -and -not (Test-UserPresent)) {
         Write-Log -Level WARN -Operation "DwmRestart" -Message "Blocked: user not present"
         return 'blocked'
     }
@@ -335,7 +337,7 @@ function Invoke-DwmRestart {
         return 'blocked'
     }
 
-    if (-not (Wait-Countdown)) { return 'blocked' }
+    if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
 
     # Write cooldown timestamp BEFORE killing DWM (in case kill triggers display driver crash)
     $state = @{}

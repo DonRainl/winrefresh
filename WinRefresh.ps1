@@ -1,5 +1,5 @@
 # WinRefresh.ps1 — Windows UI lag auto-fixer
-# Usage: .\WinRefresh.ps1 [-Manual] [-ForceExplorerRestart] [-ForceDwmRestart] [-OverrideCoolDown]
+# Usage: .\WinRefresh.ps1 [-Manual] [-ForceExplorerRestart] [-ForceDwmRestart] [-OverrideCoolDown] [-BypassUserPresence]
 # Scheduled Task runs without -Manual (unattended mode)
 # All PS 5.1 compatible — no ??, no -AsHashtable
 #Requires -RunAsAdministrator
@@ -8,7 +8,8 @@ param(
     [switch]$Manual,
     [switch]$ForceExplorerRestart,
     [switch]$ForceDwmRestart,
-    [switch]$OverrideCoolDown
+    [switch]$OverrideCoolDown,
+    [switch]$BypassUserPresence
 )
 
 $ErrorActionPreference = 'Stop'
@@ -181,10 +182,12 @@ try {
     Write-Host "  Non-Paged Pool: $($diag.NonPagedPoolMB) MB" -ForegroundColor Gray
     Write-Host "  Total Handles: $($diag.TotalHandles) (threshold: $($diag.HandleThreshold))" -ForegroundColor Gray
     if ($diag.DwmMetrics) {
-        Write-Host "  DWM: WS=$($diag.DwmMetrics.WS_MB)MB Handles=$($diag.DwmMetrics.Handles) FramesSkipped=$($diag.DwmMetrics.FramesSkipped)" -ForegroundColor Gray
+        $dwmThreadStr = if ($diag.DwmMetrics.Threads) { " Threads=$($diag.DwmMetrics.Threads)" } else { "" }
+        Write-Host "  DWM: WS=$($diag.DwmMetrics.WS_MB)MB Handles=$($diag.DwmMetrics.Handles)$dwmThreadStr FramesSkipped=$($diag.DwmMetrics.FramesSkipped)" -ForegroundColor Gray
     }
     if ($diag.ExplorerMetrics) {
-        Write-Host "  Explorer: GDI=$($diag.ExplorerMetrics.GDI) USER=$($diag.ExplorerMetrics.USER) Handles=$($diag.ExplorerMetrics.Handles)" -ForegroundColor Gray
+        $expThreadStr = if ($diag.ExplorerMetrics.Threads) { " Threads=$($diag.ExplorerMetrics.Threads)" } else { "" }
+        Write-Host "  Explorer: GDI=$($diag.ExplorerMetrics.GDI) USER=$($diag.ExplorerMetrics.USER) Handles=$($diag.ExplorerMetrics.Handles)$expThreadStr WS=$($diag.ExplorerMetrics.WS_MB)MB" -ForegroundColor Gray
     }
     Write-Host "  User state: $($diag.NotificationState), Idle: $($diag.UserIdleSeconds)s" -ForegroundColor Gray
     Write-Host ""
@@ -212,7 +215,8 @@ try {
         Update-LockPhase -Phase "ExplorerRestart" -Subphase "Starting"
         if ($IsManual) {
             Write-Log -Level INFO -Operation "Main" -Message "Explorer needs restart — executing"
-            $result = Invoke-ExplorerRestart
+            $bypassExp = $BypassUserPresence -or $ForceExplorerRestart
+            $result = Invoke-ExplorerRestart -BypassUserPresence:$bypassExp
             Write-Log -Level INFO -Operation "Main" -Message "Explorer restart result: $result"
         } else {
             Write-Log -Level WARN -Operation "Main" -Message "Explorer needs restart (unattended — skipped)"
@@ -224,7 +228,8 @@ try {
         Update-LockPhase -Phase "DwmRestart" -Subphase "Starting"
         if ($IsManual) {
             Write-Log -Level INFO -Operation "Main" -Message "DWM needs restart — executing"
-            $result = Invoke-DwmRestart -OverrideCoolDown ($OverrideCoolDown -or $ForceDwmRestart)
+            $bypassDwm = $BypassUserPresence -or $ForceDwmRestart
+            $result = Invoke-DwmRestart -OverrideCoolDown ($OverrideCoolDown -or $ForceDwmRestart) -BypassUserPresence:$bypassDwm
             Write-Log -Level INFO -Operation "Main" -Message "DWM restart result: $result"
         } else {
             Write-Log -Level WARN -Operation "Main" -Message "DWM needs restart (unattended — skipped)"
