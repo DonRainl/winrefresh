@@ -54,7 +54,7 @@ WinRefresh.ps1 按序执行：
 | 2 | 系统总句柄数 | `Get-Process.Handles` 累加 | Level 3 告警 |
 | 3 | Non-Paged Pool | `\Memory\Pool Nonpaged Bytes` | Level 3 告警（建议重启） |
 | 4 | DWM 健康 | 进程指标 + 跳帧计数器（按路径匹配，规避本地化） | 超限 → 重启 DWM |
-| 5 | Explorer 指标 | `GetGuiResources` + 进程指标 | GDI 超限 → 重启 |
+| 5 | Explorer 指标 | `GetGuiResources` + 进程句柄/线程/内存 | GDI/句柄/线程/内存超限 → 重启 |
 | 6 | 空闲系统 PTE | `\Memory\Free System Page Table Entries` × 4096 | Level 3 告警（临界则建议保存工作） |
 | 7 | GPU VRAM | `\GPU Adapter Memory\*` | 仅记录到摘要 |
 | 8 | Shell 扩展数量 | 注册表 HKLM + Wow6432Node + HKCU | 摘要提示 |

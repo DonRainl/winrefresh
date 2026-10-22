@@ -14,6 +14,7 @@ Windows UI 性能自动维护工具 — 解决长时间不关机后 UI 交互卡
 Windows 11 连续运行 3-7 天后出现 UI 卡顿（窗口拖动拖影、Alt+Tab 切换慢、右键菜单延迟），即使 CPU 和内存仍有大量空闲。WinRefresh 自动诊断并安全修复以下根因：
 
 -   GDI/USER 对象泄漏（进程达到 10000 上限）
+-   Explorer/Shell 句柄与线程泄漏（长开机导致跨窗口点击无响应）
 -   内核 Non-Paged Pool 泄漏
 -   DWM（桌面窗口管理器）问题
 -   句柄泄漏
@@ -69,11 +70,14 @@ WinRefresh — Windows UI Performance Refresh
 ### 强制操作
 
 ```powershell
-# 强制重启 Explorer（忽略诊断阈值）
+# 强制重启 Explorer（忽略诊断阈值，默认绕过在场检测）
 .\WinRefresh.ps1 -Manual -ForceExplorerRestart
 
-# 强制重启 DWM（忽略 24 小时冷却）
+# 强制重启 DWM（忽略 24 小时冷却，默认绕过在场检测）
 .\WinRefresh.ps1 -Manual -ForceDwmRestart -OverrideCoolDown
+
+# 界面失灵/鼠标点击卡死时，跳过空闲检测直接重启
+.\WinRefresh.ps1 -Manual -ForceExplorerRestart -BypassUserPresence
 ```
 
 ### 自动运行

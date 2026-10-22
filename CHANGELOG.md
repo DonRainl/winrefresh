@@ -6,6 +6,11 @@
 
 ### Added
 
+- 决策引擎规则增强与长时间不关机场景优化：
+  - 新增系统运行时间（Uptime）诊断规则（默认 30 天超限预警）
+  - 新增 Explorer 句柄数（`explorer_handles`，默认 5000）、线程数（`explorer_threads`，默认 150）及工作集（`explorer_working_set_mb`，默认 1024MB）判定规则，解决长期开机导致 Shell 跨窗口点击卡死、线程数暴增的问题
+  - 新增 DWM 线程数（`dwm_threads`，默认 100）判定规则
+  - 新增 `-BypassUserPresence` 参数，并在手动强制重启（`-ForceExplorerRestart` / `-ForceDwmRestart`）模式下默认放行，修复因倒计时自然流逝或输入卡死导致的用户空闲误判问题
 - 开源发布准备：
   - 新增 MIT License、CONTRIBUTING.md、SECURITY.md、CHANGELOG.md
   - 新增英文版 README（README.en.md）

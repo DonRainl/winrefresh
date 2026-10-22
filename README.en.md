@@ -14,6 +14,7 @@ Automatic Windows UI performance maintenance tool — fixes UI lag after long up
 After 3–7 days of continuous uptime, Windows 11 UI becomes sluggish (window drag trails, slow Alt+Tab, delayed context menus) even when CPU and memory are mostly idle. WinRefresh automatically diagnoses and safely fixes these root causes:
 
 - GDI/USER object leaks (processes hitting the 10,000 limit)
+- Explorer/Shell handle and thread leaks (causing non-responsive window clicks on long uptimes)
 - Kernel Non-Paged Pool leaks
 - DWM (Desktop Window Manager) issues
 - Handle leaks
@@ -55,11 +56,14 @@ Manual mode executes all Level 1 safe cleanups and, when necessary (after safety
 ### Forced operations
 
 ```powershell
-# Force an Explorer restart (ignores diagnostic thresholds)
+# Force an Explorer restart (ignores diagnostic thresholds, bypasses presence checks)
 .\WinRefresh.ps1 -Manual -ForceExplorerRestart
 
-# Force a DWM restart (ignores the 24h cooldown)
+# Force a DWM restart (ignores the 24h cooldown, bypasses presence checks)
 .\WinRefresh.ps1 -Manual -ForceDwmRestart -OverrideCoolDown
+
+# Explicitly bypass user presence check during frozen input
+.\WinRefresh.ps1 -Manual -ForceExplorerRestart -BypassUserPresence
 ```
 
 ### Automatic runs
