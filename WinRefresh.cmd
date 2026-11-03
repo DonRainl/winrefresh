@@ -31,4 +31,6 @@ pause
 exit /b 1
 
 :done
+echo.
+pause
 endlocal

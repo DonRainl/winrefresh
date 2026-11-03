@@ -1,4 +1,4 @@
-# Uninstall-ScheduledTask.ps1 — WinRefresh uninstallation script
+﻿# Uninstall-ScheduledTask.ps1 — WinRefresh uninstallation script
 # Copies itself to %TEMP% before removing Program Files
 # Usage: .\Uninstall-ScheduledTask.ps1
 #Requires -RunAsAdministrator
@@ -75,6 +75,14 @@ try {
     Write-Host "    ProgramData removed." -ForegroundColor Green
 } catch {
     Write-Host "    WARNING: Cannot remove ProgramData: $_" -ForegroundColor Yellow
+}
+
+# 5b. Remove Desktop shortcut
+Write-Host "  Removing Desktop Shortcut..." -ForegroundColor Gray
+$desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) "WinRefresh 一键系统刷新.lnk"
+if (Test-Path $desktopShortcut) {
+    Remove-Item -Path $desktopShortcut -Force -ErrorAction SilentlyContinue
+    Write-Host "    Desktop shortcut removed." -ForegroundColor Green
 }
 
 # 5. Remove registry

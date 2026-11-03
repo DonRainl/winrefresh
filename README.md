@@ -15,6 +15,7 @@ Windows 11 连续运行 3-7 天后出现 UI 卡顿（窗口拖动拖影、Alt+Ta
 
 -   GDI/USER 对象泄漏（进程达到 10000 上限）
 -   Explorer/Shell 句柄与线程泄漏（长开机导致跨窗口点击无响应）
+-   音频服务时钟挂起（长时间不关机及睡眠唤醒后 USB 声卡时钟丢失，导致 PotPlayer 等播放器音画同步超时、一帧一帧幻灯片卡顿）
 -   内核 Non-Paged Pool 泄漏
 -   DWM（桌面窗口管理器）问题
 -   句柄泄漏
@@ -53,13 +54,16 @@ WinRefresh — Windows UI Performance Refresh
 1.  将脚本安装到 `C:\Program Files\WinRefresh\`
 2.  创建数据目录 `C:\ProgramData\WinRefresh\`
 3.  注册 Windows Event Log 源 "WinRefresh"
-4.  创建计划任务：**每日凌晨 3:00** + **登录时**（以当前用户身份运行）
+4.  创建计划任务：**每日凌晨 3:00** + **登录时**（支持睡眠唤醒补跑与定时唤醒）
+5.  在桌面创建 **「WinRefresh 一键系统刷新」** 快捷方式（双击自动 UAC 提权）
 
 ## 使用
 
-### 手动运行
+### 手动运行（一键刷新）
 
-双击 `WinRefresh.cmd` 或在终端中运行：
+- **桌面快捷方式**：直接双击桌面上的 **「WinRefresh 一键系统刷新」** 图标（内置 UAC 自动提权，点击“是”即完成全自动清理并在完成后显示摘要，按任意键退出）。
+- **或双击脚本**：双击项目或安装目录下的 `WinRefresh.cmd`。
+- **或终端运行**：
 
 ```powershell
 .\WinRefresh.ps1 -Manual
@@ -82,14 +86,15 @@ WinRefresh — Windows UI Performance Refresh
 
 ### 自动运行
 
-计划任务每天凌晨 3:00 自动运行，仅执行 Level 1 安全清理（不重启 Explorer/DWM）。
+计划任务每天凌晨 3:00 自动运行（睡眠错过可在唤醒时自动补跑），执行 Level 1 清理（含音频服务重置），并在开启配置后自动安全重启 Explorer（避开 Premiere 等关键生产力软件，不重启 DWM）。
 
 ## 清理级别
 
 | 级别 | 操作 | 无人值守 | 手动 |
 |------|------|:--:|:--:|
-| Level 1 | 清临时文件、DNS 缓存、BITS 队列、重建图标/缩略图缓存 | ✅ | ✅ |
-| Level 2 | 重启 Explorer / DWM（需安全检查） | ⚠️ 仅警告 | ✅ |
+| Level 1 | 清临时文件、DNS 缓存、BITS 队列、重建图标/缩略图缓存、**重置音频服务 (audiosrv)** | ✅ | ✅ |
+| Level 2 | 重启 Explorer | ✅ (带进程保护) | ✅ |
+| Level 2 | 重启 DWM（需安全检查 + 24h 冷却） | ⚠️ 仅警告 | ✅ |
 | Level 3 | Non-Paged Pool / PTE 严重告警 | ✅ | ✅ |
 
 ## 日志

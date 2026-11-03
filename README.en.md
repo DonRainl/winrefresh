@@ -15,6 +15,7 @@ After 3–7 days of continuous uptime, Windows 11 UI becomes sluggish (window dr
 
 - GDI/USER object leaks (processes hitting the 10,000 limit)
 - Explorer/Shell handle and thread leaks (causing non-responsive window clicks on long uptimes)
+- Audio service clock desync (USB DAC / soundbar clock stalls after long uptimes or sleep/wake, causing video players like PotPlayer to drop frames like a slideshow)
 - Kernel Non-Paged Pool leaks
 - DWM (Desktop Window Manager) issues
 - Handle leaks
@@ -39,13 +40,16 @@ This will:
 1. Copy scripts to `C:\Program Files\WinRefresh\`
 2. Create the data directory `C:\ProgramData\WinRefresh\`
 3. Register the "WinRefresh" Windows Event Log source
-4. Register a Scheduled Task: **daily at 3:00 AM** + **at logon** (runs as the current user)
+4. Register a Scheduled Task: **daily at 3:00 AM** + **at logon** (supports waking PC and catching up missed runs on wake)
+5. Create a **"WinRefresh 一键系统刷新"** Desktop shortcut (auto UAC elevation)
 
 ## Usage
 
-### Manual run
+### Manual run (One-Click Refresh)
 
-Double-click `WinRefresh.cmd` or run in a terminal:
+- **Desktop Shortcut**: Double-click the **"WinRefresh 一键系统刷新"** shortcut on your Desktop (prompts for UAC elevation, performs automatic cleanup, and displays summary upon completion).
+- **Or double-click script**: Run `WinRefresh.cmd` in the project or install folder.
+- **Or run in terminal**:
 
 ```powershell
 .\WinRefresh.ps1 -Manual
@@ -68,14 +72,15 @@ Manual mode executes all Level 1 safe cleanups and, when necessary (after safety
 
 ### Automatic runs
 
-The scheduled task runs daily at 3:00 AM and performs **Level 1 cleanups only** (never restarts Explorer/DWM unattended).
+The scheduled task runs daily at 3:00 AM (automatically catches up on wake if PC was asleep). It executes Level 1 cleanup (including audio service reset), and can safely restart Explorer when configured (protecting sensitive apps like Premiere Pro; DWM is never restarted unattended).
 
 ## Cleanup Levels
 
 | Level | Operation | Unattended | Manual |
 |-------|-----------|:--:|:--:|
-| Level 1 | Clear temp files, DNS cache, BITS queue, rebuild icon/thumbnail caches | ✅ | ✅ |
-| Level 2 | Restart Explorer / DWM (requires safety checks) | ⚠️ warning only | ✅ |
+| Level 1 | Clear temp files, DNS cache, BITS queue, rebuild icon/thumbnail caches, **reset Windows Audio (audiosrv)** | ✅ | ✅ |
+| Level 2 | Restart Explorer | ✅ (with app protection) | ✅ |
+| Level 2 | Restart DWM (requires safety checks + 24h cooldown) | ⚠️ warning only | ✅ |
 | Level 3 | Non-Paged Pool / PTE critical warnings | ✅ | ✅ |
 
 ## Logs

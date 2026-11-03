@@ -1,4 +1,4 @@
-# WinRefresh.ps1 — Windows UI lag auto-fixer
+﻿# WinRefresh.ps1 — Windows UI lag auto-fixer
 # Usage: .\WinRefresh.ps1 [-Manual] [-ForceExplorerRestart] [-ForceDwmRestart] [-OverrideCoolDown] [-BypassUserPresence]
 # Scheduled Task runs without -Manual (unattended mode)
 # All PS 5.1 compatible — no ??, no -AsHashtable
@@ -210,7 +210,9 @@ try {
         }
     }
 
-    # Explorer restart (manual mode only)
+    # Explorer restart
+    $allowUnattendedExp = if ($null -ne $thresholdConfig['unattended_restart_explorer']) { [bool]$thresholdConfig['unattended_restart_explorer'] } else { $false }
+
     if ($plan.ShouldRestartExplorer -or $ForceExplorerRestart) {
         Update-LockPhase -Phase "ExplorerRestart" -Subphase "Starting"
         if ($IsManual) {
@@ -218,6 +220,27 @@ try {
             $bypassExp = $BypassUserPresence -or $ForceExplorerRestart
             $result = Invoke-ExplorerRestart -BypassUserPresence:$bypassExp
             Write-Log -Level INFO -Operation "Main" -Message "Explorer restart result: $result"
+        } elseif ($allowUnattendedExp) {
+            Write-Log -Level INFO -Operation "Main" -Message "Explorer needs restart (unattended allowed) — verifying safety guards"
+            $protectedApps = if ($null -ne $cleanupConfig['protected_processes']) {
+                @($cleanupConfig['protected_processes'])
+            } else {
+                @('Adobe Premiere Pro', 'AfterFX', 'blender', 'Photoshop', 'obs64')
+            }
+            $runningProtected = Get-Process -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProcessName -in $protectedApps }
+            if ($runningProtected) {
+                $procNames = ($runningProtected | Select-Object -ExpandProperty ProcessName -Unique) -join ', '
+                Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Unattended Explorer restart aborted: protected process running ($procNames)"
+                Write-Host "Unattended Explorer restart skipped: protected process running ($procNames)" -ForegroundColor Yellow
+            } elseif (Test-FileCopyInProgress) {
+                Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Unattended Explorer restart aborted: file copy in progress"
+                Write-Host "Unattended Explorer restart skipped: file copy in progress" -ForegroundColor Yellow
+            } else {
+                Write-Log -Level INFO -Operation "Main" -Message "Executing unattended safe Explorer restart"
+                $result = Invoke-ExplorerRestart -BypassUserPresence -NoCountdown
+                Write-Log -Level INFO -Operation "Main" -Message "Explorer unattended restart result: $result"
+            }
         } else {
             Write-Log -Level WARN -Operation "Main" -Message "Explorer needs restart (unattended — skipped)"
         }

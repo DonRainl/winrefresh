@@ -1,4 +1,4 @@
-# DecisionEngine + Config loading combined tests
+﻿# DecisionEngine + Config loading combined tests
 $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Push-Location ..
@@ -200,6 +200,13 @@ $diag11 = New-MockDiagnostic -ExplorerMetrics $expHigh2
 $plan11 = Get-DecisionPlan -Diagnostics $diag11 -IsManual $false
 Assert-True (-not $plan11.ShouldRestartExplorer) "Explorer restart downgraded in unattended"
 Assert-True (($plan11.Level2Warnings -join ' ') -like '*unattended*') "Warning mentions unattended skip"
+
+# ===== Test 11b: Unattended mode with unattended_restart_explorer =====
+Write-Host "[11b] Unattended mode with explorer restart allowed:" -ForegroundColor Cyan
+$diag11b = New-MockDiagnostic -ExplorerMetrics $expHigh2
+$plan11b = Get-DecisionPlan -Diagnostics $diag11b -ConfigThresholds @{ unattended_restart_explorer = $true } -IsManual $false
+Assert-True $plan11b.ShouldRestartExplorer "Explorer restart preserved when unattended_restart_explorer is true"
+Assert-True (($plan11b.Summary -join ' ') -like '*unattended allowed*') "Summary mentions unattended allowed"
 
 # ===== Test 12: Custom thresholds from config =====
 Write-Host "[12] Custom threshold config:" -ForegroundColor Cyan

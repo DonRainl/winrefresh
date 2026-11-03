@@ -1,4 +1,4 @@
-# DecisionEngine.ps1 — threshold comparison and dual-mode routing
+﻿# DecisionEngine.ps1 — threshold comparison and dual-mode routing
 # Functions: Get-DecisionPlan
 # All PS 5.1 compatible — no ?? operator, no -AsHashtable
 
@@ -114,11 +114,16 @@ function Get-DecisionPlan {
     }
 
     # --- Update restart decisions based on mode ---
+    $allowUnattendedExp = if ($null -ne $th['unattended_restart_explorer']) { [bool]$th['unattended_restart_explorer'] } else { $false }
     if (-not $IsManual) {
-        # Unattended: downgrade Level 2 to warnings only
         if ($plan.ShouldRestartExplorer) {
-            $plan.Level2Warnings += "Explorer needs restart (unattended — skipped)"
-            $plan.ShouldRestartExplorer = $false
+            if ($allowUnattendedExp) {
+                $plan.Summary += "Explorer restart scheduled (unattended allowed)"
+            } else {
+                # Unattended: downgrade Level 2 to warnings only
+                $plan.Level2Warnings += "Explorer needs restart (unattended — skipped)"
+                $plan.ShouldRestartExplorer = $false
+            }
         }
         if ($plan.ShouldRestartDwm) {
             $plan.Level2Warnings += "DWM needs restart (unattended — skipped)"

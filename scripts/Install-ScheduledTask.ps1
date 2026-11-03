@@ -1,4 +1,4 @@
-# Install-ScheduledTask.ps1 — WinRefresh installation script
+﻿# Install-ScheduledTask.ps1 — WinRefresh installation script
 # Usage: .\Install-ScheduledTask.ps1
 #Requires -RunAsAdministrator
 
@@ -127,7 +127,9 @@ $taskTrigger2 = New-ScheduledTaskTrigger -AtLogOn
 $taskSettings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
-    -AllowStartIfOnBatteries:$false `
+    -AllowStartIfOnBatteries:$true `
+    -StartWhenAvailable `
+    -WakeToRun `
     -Compatibility Win8
 
 $taskPrincipal = New-ScheduledTaskPrincipal -UserId $currentUserSid `
@@ -154,11 +156,29 @@ try {
 }
 
 Write-Host ""
+# 12. Create Desktop Shortcut for one-click maintenance
+Write-Host "Creating Desktop Shortcut..." -ForegroundColor Gray
+try {
+    $wsh = New-Object -ComObject WScript.Shell
+    $desktopPath = [Environment]::GetFolderPath('Desktop')
+    $shortcutPath = Join-Path $desktopPath "WinRefresh 一键系统刷新.lnk"
+    $shortcut = $wsh.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = "$installPath\WinRefresh.cmd"
+    $shortcut.WorkingDirectory = $installPath
+    $shortcut.Description = "WinRefresh — Windows UI 性能自动维护"
+    $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,238"
+    $shortcut.Save()
+    Write-Host "  Desktop shortcut created: $shortcutPath" -ForegroundColor Green
+} catch {
+    Write-Host "  WARNING: Failed to create desktop shortcut: $_" -ForegroundColor Yellow
+}
+
+Write-Host ""
 Write-Host "Installation complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Files installed to: $installPath" -ForegroundColor Gray
 Write-Host "  Data directory:    $dataPath" -ForegroundColor Gray
 Write-Host "  Logs:              $logPath" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  To run manually:   Double-click WinRefresh.cmd in $installPath" -ForegroundColor Gray
+Write-Host "  To run manually:   Double-click the desktop shortcut or WinRefresh.cmd in $installPath" -ForegroundColor Gray
 Write-Host "  To uninstall:      Run scripts\Uninstall-ScheduledTask.ps1 in $installPath" -ForegroundColor Gray

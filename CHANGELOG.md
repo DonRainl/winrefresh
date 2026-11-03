@@ -6,6 +6,19 @@
 
 ### Added
 
+- **Windows 音频服务（`audiosrv`）自动维护**：
+  - 新增 `Restart-AudioService`，在 Level 1 清理中自动重置 Windows Audio 服务，彻底解决长期开机或睡眠唤醒后 USB 声卡/条形音箱时钟假死导致的 PotPlayer 等视频播放器音画同步幻灯片卡顿问题（可通过 `cleanup.restart_audio_service` 配置）
+- **带安全守护的无人值守 Explorer 自动重启**：
+  - 新增 `unattended_restart_explorer` 配置（默认开启），在凌晨或唤醒补跑检测到 Explorer 线程/句柄超限时，自动检查关键生产力软件（默认保护 `Adobe Premiere Pro`、`AfterFX`、`blender`、`Photoshop`、`obs64`）和文件传输状态；无敏感软件且无文件传输时安全静默重启 Explorer
+- **一键桌面快捷方式与 UAC 提权**：
+  - 安装脚本自动在当前用户桌面创建「WinRefresh 一键系统刷新」快捷方式
+  - 优化 `WinRefresh.cmd`：双击自动请求管理员权限并在完成后暂停显示摘要，免去开启终端和手动敲命令
+- **计划任务休眠与唤醒适配**：
+  - 计划任务启用 `StartWhenAvailable`（睡眠错过后开机/唤醒立即自动补跑）与 `WakeToRun`（允许凌晨定时唤醒）
+  - 解除对电池/交流电源的严苛限制（修复睡眠唤醒状态下抛出 `0x800710E0` 被拒绝错误的问题）
+
+### Added
+
 - 决策引擎规则增强与长时间不关机场景优化：
   - 新增系统运行时间（Uptime）诊断规则（默认 30 天超限预警）
   - 新增 Explorer 句柄数（`explorer_handles`，默认 5000）、线程数（`explorer_threads`，默认 150）及工作集（`explorer_working_set_mb`，默认 1024MB）判定规则，解决长期开机导致 Shell 跨窗口点击卡死、线程数暴增的问题

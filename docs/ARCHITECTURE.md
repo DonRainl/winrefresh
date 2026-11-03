@@ -41,8 +41,8 @@ Get-DecisionPlan (阈值比较 → 执行计划)
         │  plan.ShouldRestartExplorer / ShouldRestartDwm / Level2Warnings / Level3Warnings
         ▼
 WinRefresh.ps1 按序执行：
-  1. Invoke-Level1Cleanup            （始终执行）
-  2. Explorer/DWM 重启                （仅手动模式，无人值守降级为告警）
+  1. Invoke-Level1Cleanup            （始终执行，含 audiosrv 重置）
+  2. Explorer/DWM 重启                （手动模式；或无人值守下在受保护进程无运行且配置允许时安全重启 Explorer）
   3. Write-Level3Warning             （仅告警，提示保存工作/重启）
 ```
 

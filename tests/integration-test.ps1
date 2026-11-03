@@ -69,7 +69,7 @@ $requiredFunctions = @(
     'Initialize-Diagnostics', 'Get-SystemDiagnostics', 'Get-AdaptiveThresholds',
     'Get-UserIdleSeconds', 'Get-UserNotificationState', 'Get-TopGdiUserProcesses',
     'Get-ExplorerMetrics', 'Get-DwmMetrics',
-    'Invoke-AtomicOperation', 'Invoke-Level1Cleanup', 'Invoke-ExplorerRestart',
+    'Invoke-AtomicOperation', 'Invoke-Level1Cleanup', 'Restart-AudioService', 'Invoke-ExplorerRestart',
     'Invoke-DwmRestart', 'Write-Level3Warning', 'Test-UserPresent', 'Test-FileCopyInProgress',
     'Get-DecisionPlan'
 )

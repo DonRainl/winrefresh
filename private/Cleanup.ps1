@@ -1,4 +1,4 @@
-# Cleanup.ps1 — 3-level cleanup operations with safety checks
+﻿# Cleanup.ps1 — 3-level cleanup operations with safety checks
 # Functions: Invoke-AtomicOperation, Invoke-Level1Cleanup, Invoke-ExplorerRestart, Invoke-DwmRestart
 
 function Invoke-AtomicOperation {
@@ -161,6 +161,31 @@ function Update-ThumbnailClearTimestamp {
     Set-Content -Path $StatePath -Value $stateJson -Encoding UTF8 -Force
 }
 
+function Restart-AudioService {
+    param([hashtable]$Config = @{})
+    $skip = if ($null -ne $Config['restart_audio_service']) { -not [bool]$Config['restart_audio_service'] } else { $false }
+    if ($skip) {
+        Write-Log -Level INFO -Operation "RestartAudioService" -Message "Skipped: disabled in config"
+        return $false
+    }
+
+    Write-Log -Level INFO -Operation "RestartAudioService" -Message "Restarting Windows Audio service (audiosrv)..."
+    try {
+        $svc = Get-Service -Name audiosrv -ErrorAction SilentlyContinue
+        if ($svc -and $svc.Status -eq 'Running') {
+            Restart-Service -Name audiosrv -Force -ErrorAction Stop
+            Write-Log -Level INFO -Operation "RestartAudioService" -Message "OK: Windows Audio service restarted"
+            return $true
+        } else {
+            Write-Log -Level INFO -Operation "RestartAudioService" -Message "Skipped: audiosrv not running"
+            return $false
+        }
+    } catch {
+        Write-Log -Level WARN -Operation "RestartAudioService" -Message "Failed to restart audiosrv: $_"
+        return $false
+    }
+}
+
 function Invoke-Level1Cleanup {
     param([hashtable]$Config = @{})
     # Null guard — PowerShell passes $null for explicitly-passed $null even when default is @{}
@@ -174,6 +199,7 @@ function Invoke-Level1Cleanup {
     Clear-BitsQueue
     Clear-IconCache
     Clear-ThumbnailCache -IntervalDays $thumbInterval
+    Restart-AudioService -Config $Config
 }
 
 # ===== Level 2: User Presence + Confirmation Required =====
@@ -241,7 +267,7 @@ function Wait-Countdown {
 }
 
 function Invoke-ExplorerRestart {
-    param([switch]$BypassUserPresence)
+    param([switch]$BypassUserPresence, [switch]$NoCountdown)
     # Returns: 'restarted', 'blocked', 'skipped'
     if (-not $BypassUserPresence -and -not (Test-UserPresent)) {
         Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Blocked: user not present"
@@ -253,7 +279,9 @@ function Invoke-ExplorerRestart {
         return 'blocked'
     }
 
-    if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
+    if (-not $NoCountdown) {
+        if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
+    }
 
     Write-Log -Level WARN -Operation "ExplorerRestart" -Message "Starting safe restart"
 

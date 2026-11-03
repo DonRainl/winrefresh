@@ -13,13 +13,22 @@
         "explorer_working_set_mb": 1024,
         "uptime_warning_days": 30,
         "handle_threshold": null,
-        "shell_extensions_count": 50
+        "shell_extensions_count": 50,
+        "unattended_restart_explorer": true
     },
     "cleanup": {
         "temp_min_age_hours": 24,
         "temp_min_size_mb": 500,
         "thumbnail_cache_interval_days": 30,
-        "dwm_cooldown_hours": 24
+        "dwm_cooldown_hours": 24,
+        "restart_audio_service": true,
+        "protected_processes": [
+            "Adobe Premiere Pro",
+            "AfterFX",
+            "blender",
+            "Photoshop",
+            "obs64"
+        ]
     },
     "logging": {
         "max_log_size_mb": 10,
