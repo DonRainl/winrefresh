@@ -168,7 +168,11 @@ try {
     $shortcut.Description = "WinRefresh — Windows UI 性能自动维护"
     $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,238"
     $shortcut.Save()
-    Write-Host "  Desktop shortcut created: $shortcutPath" -ForegroundColor Green
+    # Set Run as Administrator flag (byte 21: bit 0x20 is SLDF_RUNAS_USER)
+    $bytes = [System.IO.File]::ReadAllBytes($shortcutPath)
+    $bytes[21] = $bytes[21] -bor 0x20
+    [System.IO.File]::WriteAllBytes($shortcutPath, $bytes)
+    Write-Host "  Desktop shortcut created with admin flag: $shortcutPath" -ForegroundColor Green
 } catch {
     Write-Host "  WARNING: Failed to create desktop shortcut: $_" -ForegroundColor Yellow
 }
