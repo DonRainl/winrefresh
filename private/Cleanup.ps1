@@ -1,4 +1,4 @@
-﻿# Cleanup.ps1 — 3-level cleanup operations with safety checks
+# Cleanup.ps1 — 3-level cleanup operations with safety checks
 # Functions: Invoke-AtomicOperation, Invoke-Level1Cleanup, Invoke-ExplorerRestart, Invoke-DwmRestart
 
 function Invoke-AtomicOperation {
@@ -186,6 +186,27 @@ function Restart-AudioService {
     }
 }
 
+function Optimize-DwmMpo {
+    param([hashtable]$Config = @{})
+    $skip = if ($null -ne $Config['disable_mpo']) { -not [bool]$Config['disable_mpo'] } else { $false }
+    if ($skip) {
+        Write-Log -Level INFO -Operation "OptimizeDwmMpo" -Message "Skipped: disabled in config"
+        return $false
+    }
+
+    Invoke-AtomicOperation -OperationName "OptimizeDwmMpo" -Action {
+        $dwmPath = "HKLM:\SOFTWARE\Microsoft\Windows\Dwm"
+        if (-not (Test-Path $dwmPath)) {
+            New-Item -Path $dwmPath -Force | Out-Null
+        }
+        $current = (Get-ItemProperty -Path $dwmPath -Name "OverlayTestMode" -ErrorAction SilentlyContinue).OverlayTestMode
+        if ($current -ne 5) {
+            Set-ItemProperty -Path $dwmPath -Name "OverlayTestMode" -Value 5 -Type DWord -Force
+            Write-Log -Level INFO -Operation "OptimizeDwmMpo" -Message "Disabled MPO (OverlayTestMode=5) to eliminate window resize/drag stutter"
+        }
+    }
+}
+
 function Invoke-Level1Cleanup {
     param([hashtable]$Config = @{})
     # Null guard — PowerShell passes $null for explicitly-passed $null even when default is @{}
@@ -200,6 +221,7 @@ function Invoke-Level1Cleanup {
     Clear-IconCache
     Clear-ThumbnailCache -IntervalDays $thumbInterval
     Restart-AudioService -Config $Config
+    Optimize-DwmMpo -Config $Config
 }
 
 # ===== Level 2: User Presence + Confirmation Required =====
@@ -240,7 +262,7 @@ function Test-FileCopyInProgress {
 }
 
 function Wait-Countdown {
-    param([int]$Seconds = 15, [int]$CheckInterval = 3, [switch]$BypassUserPresence)
+    param([int]$Seconds = 5, [int]$CheckInterval = 1, [switch]$BypassUserPresence)
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Yellow
     Write-Host "  WARNING: Explorer/DWM will be restarted" -ForegroundColor Yellow
@@ -337,7 +359,7 @@ function Invoke-ExplorerRestart {
 }
 
 function Invoke-DwmRestart {
-    param([bool]$OverrideCoolDown = $false, [string]$StatePath = "$env:ProgramData\WinRefresh\state.json", [switch]$BypassUserPresence)
+    param([bool]$OverrideCoolDown = $false, [string]$StatePath = "$env:ProgramData\WinRefresh\state.json", [switch]$BypassUserPresence, [switch]$NoCountdown)
 
     # Check cooldown
     if (-not $OverrideCoolDown) {
@@ -365,7 +387,9 @@ function Invoke-DwmRestart {
         return 'blocked'
     }
 
-    if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
+    if (-not $NoCountdown) {
+        if (-not (Wait-Countdown -BypassUserPresence:$BypassUserPresence)) { return 'blocked' }
+    }
 
     # Write cooldown timestamp BEFORE killing DWM (in case kill triggers display driver crash)
     $state = @{}

@@ -16,14 +16,14 @@ cd /d "%~dp0"
 :: Try PowerShell 7 first
 where pwsh >nul 2>&1
 if %errorlevel% equ 0 (
-    pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0WinRefresh.ps1" -Manual %*
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0WinRefresh.ps1" -Manual -ForceDwmRestart -OverrideCoolDown %*
     goto :done
 )
 
 :: Fallback to Windows PowerShell 5.1
 where powershell >nul 2>&1
 if %errorlevel% equ 0 (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0WinRefresh.ps1" -Manual %*
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0WinRefresh.ps1" -Manual -ForceDwmRestart -OverrideCoolDown %*
     goto :done
 )
 

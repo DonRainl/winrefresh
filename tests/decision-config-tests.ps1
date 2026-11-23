@@ -52,20 +52,24 @@ function New-MockDiagnostic {
         $PteThreshold = 512MB,
         $GpuVram = @(),
         $ShellExtensionCount = 30,
-        $Uptime = $null
+        $Uptime = $null,
+        $GpuProcesses = @(),
+        $VirtualDisplayAdapters = @()
     )
     return [PSCustomObject]@{
-        TopGuiProcesses     = $TopGuiProcesses
-        TotalHandles        = $TotalHandles
-        HandleThreshold     = $HandleThreshold
-        NonPagedPoolMB      = $NonPagedPoolMB
-        DwmMetrics          = $DwmMetrics
-        ExplorerMetrics     = $ExplorerMetrics
-        FreeSystemPTE_MB    = $FreeSystemPTE_MB
-        PteThreshold        = $PteThreshold
-        GpuVram             = $GpuVram
-        ShellExtensionCount = $ShellExtensionCount
-        Uptime              = $Uptime
+        TopGuiProcesses        = $TopGuiProcesses
+        TotalHandles           = $TotalHandles
+        HandleThreshold        = $HandleThreshold
+        NonPagedPoolMB         = $NonPagedPoolMB
+        DwmMetrics             = $DwmMetrics
+        ExplorerMetrics        = $ExplorerMetrics
+        FreeSystemPTE_MB       = $FreeSystemPTE_MB
+        PteThreshold           = $PteThreshold
+        GpuVram                = $GpuVram
+        ShellExtensionCount    = $ShellExtensionCount
+        Uptime                 = $Uptime
+        GpuProcesses           = $GpuProcesses
+        VirtualDisplayAdapters = $VirtualDisplayAdapters
     }
 }
 
@@ -140,6 +144,14 @@ $diag6b = New-MockDiagnostic -DwmMetrics $dwmHighThreads
 $plan6b = Get-DecisionPlan -Diagnostics $diag6b -IsManual $true
 Assert-True $plan6b.ShouldRestartDwm "DWM restart flagged on high threads"
 Assert-True (($plan6b.Summary -join ' ') -like '*Threads=120*') "Summary mentions DWM threads"
+
+# ===== Test 6c: DWM CPU high =====
+Write-Host "[6c] DWM CPU high:" -ForegroundColor Cyan
+$dwmHighCpu = [PSCustomObject]@{ WS_MB = 200; Handles = 1000; Threads = 20; CpuPercent = 75; FramesSkipped = 0 }
+$diag6c = New-MockDiagnostic -DwmMetrics $dwmHighCpu
+$plan6c = Get-DecisionPlan -Diagnostics $diag6c -IsManual $true
+Assert-True $plan6c.ShouldRestartDwm "DWM restart flagged on high CPU"
+Assert-True (($plan6c.Summary -join ' ') -like '*CPU=75%*') "Summary mentions DWM CPU"
 
 # ===== Test 7: Explorer GDI threshold (metric 5) =====
 Write-Host "[7] Explorer GDI separate metric:" -ForegroundColor Cyan
@@ -234,6 +246,45 @@ $diag15 = New-MockDiagnostic -TotalHandles 0 -HandleThreshold 50000
 $plan15 = Get-DecisionPlan -Diagnostics $diag15
 Assert-True ($plan15.Level3Warnings.Count -eq 0) "Zero handles does NOT trigger warning (below threshold)"
 
+# ===== Test 16: High CPU GPU process =====
+Write-Host "[16] High CPU GPU process:" -ForegroundColor Cyan
+$highCpuGpu = [PSCustomObject]@{
+    Id = 1234
+    Name = 'msedgewebview2.exe'
+    Parent = 'clash-verge.exe'
+    CpuSeconds = 5000
+    WS_MB = 150
+}
+$diag16 = New-MockDiagnostic -GpuProcesses @($highCpuGpu)
+$plan16 = Get-DecisionPlan -Diagnostics $diag16
+Assert-True ($plan16.Level2Warnings.Count -gt 0) "Level 2 warning for high CPU GPU process"
+Assert-True (($plan16.Level2Warnings -join ' ') -like '*clash-verge.exe*') "Warning mentions parent process name"
+
+# ===== Test 17: Active Virtual Display Adapter =====
+Write-Host "[17] Active Virtual Display Adapter:" -ForegroundColor Cyan
+$activeVirtual = [PSCustomObject]@{
+    Name = 'GameViewer Virtual Display Adapter'
+    Status = 'OK'
+    DeviceID = 'ROOT\DISPLAY\0000'
+    ErrorCode = 0
+}
+$diag17 = New-MockDiagnostic -VirtualDisplayAdapters @($activeVirtual)
+$plan17 = Get-DecisionPlan -Diagnostics $diag17
+Assert-True ($plan17.Level2Warnings.Count -gt 0) "Level 2 warning for active virtual display"
+Assert-True (($plan17.Level2Warnings -join ' ') -like '*GameViewer Virtual Display Adapter*') "Warning mentions virtual display name"
+
+# ===== Test 18: Disabled Virtual Display Adapter =====
+Write-Host "[18] Disabled Virtual Display Adapter:" -ForegroundColor Cyan
+$disabledVirtual = [PSCustomObject]@{
+    Name = 'GameViewer Virtual Display Adapter'
+    Status = 'Error'
+    DeviceID = 'ROOT\DISPLAY\0000'
+    ErrorCode = 22
+}
+$diag18 = New-MockDiagnostic -VirtualDisplayAdapters @($disabledVirtual)
+$plan18 = Get-DecisionPlan -Diagnostics $diag18
+Assert-True ($plan18.Level2Warnings.Count -eq 0) "Disabled virtual display does NOT trigger warning"
+
 # ===== Config Loading Tests =====
 Write-Host ""
 Write-Host "[15] Config loading:" -ForegroundColor Cyan
@@ -263,6 +314,10 @@ try {
 # Test 15b: Nested access works
 $gdiVal = $cfg['thresholds']['gdi_per_process']
 Assert-Equal 9000 $gdiVal "Nested hashtable access: gdi_per_process"
+Assert-Equal 50 $cfg['thresholds']['dwm_cpu_percent'] "Nested hashtable access: dwm_cpu_percent"
+Assert-Equal 3600 $cfg['thresholds']['gpu_process_cpu_seconds'] "Nested hashtable access: gpu_process_cpu_seconds"
+Assert-Equal 1 $cfg['thresholds']['virtual_display_warning_count'] "Nested hashtable access: virtual_display_warning_count"
+Assert-Equal $true $cfg['cleanup']['disable_mpo'] "Nested hashtable access: disable_mpo"
 
 # Test 15c: Null handle_threshold means adaptive
 Assert-True ($null -eq $cfg['thresholds']['handle_threshold']) "handle_threshold is null (adaptive)"

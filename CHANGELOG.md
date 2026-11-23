@@ -6,6 +6,11 @@
 
 ### Added
 
+- **图形渲染管线与 MPO / DWM 深度刷新（免重启根治 UI 拖动与最小化卡顿）**：
+  - 新增 `Optimize-DwmMpo`，在 Level 1 清理中自动禁用 MPO 硬件叠加（`OverlayTestMode=5`），根除 NVIDIA RTX 30/40 系显卡在高刷屏下拖动改变窗口大小与最小化动画时的掉帧与频闪问题
+  - 优化 `WinRefresh.cmd` 桌面快捷方式执行逻辑：手动点击运行时自动追加 `-ForceDwmRestart -OverrideCoolDown`，彻底重置长期开机积累的 DirectComposition 视觉树和 DXGI 交换链
+  - 优化重启倒计时机制：倒计时缩短至 5 秒（更敏捷），且在连续重启 Explorer 和 DWM 时自动合并倒计时（避免双重等待 15 秒）
+  - 优化 DWM 诊断门槛：下调工作集（500MB）、句柄数（2500）及线程数（80）阈值，提早识别图形管线劣化状态
 - **Windows 音频服务（`audiosrv`）自动维护**：
   - 新增 `Restart-AudioService`，在 Level 1 清理中自动重置 Windows Audio 服务，彻底解决长期开机或睡眠唤醒后 USB 声卡/条形音箱时钟假死导致的 PotPlayer 等视频播放器音画同步幻灯片卡顿问题（可通过 `cleanup.restart_audio_service` 配置）
 - **带安全守护的无人值守 Explorer 自动重启**：

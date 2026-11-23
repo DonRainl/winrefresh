@@ -1,4 +1,4 @@
-﻿# DecisionEngine.ps1 — threshold comparison and dual-mode routing
+# DecisionEngine.ps1 — threshold comparison and dual-mode routing
 # Functions: Get-DecisionPlan
 # All PS 5.1 compatible — no ?? operator, no -AsHashtable
 
@@ -60,12 +60,14 @@ function Get-DecisionPlan {
     $dwmWsThreshold = if ($null -ne $th['dwm_working_set_mb']) { [int]$th['dwm_working_set_mb'] } else { 1024 }
     $dwmHandleThreshold = if ($null -ne $th['dwm_handles']) { [int]$th['dwm_handles'] } else { 5000 }
     $dwmThreadThreshold = if ($null -ne $th['dwm_threads']) { [int]$th['dwm_threads'] } else { 100 }
+    $dwmCpuThreshold = if ($null -ne $th['dwm_cpu_percent']) { [int]$th['dwm_cpu_percent'] } else { 50 }
     if ($Diagnostics.DwmMetrics) {
         $dwm = $Diagnostics.DwmMetrics
         $issues = @()
         if ($dwm.WS_MB -gt $dwmWsThreshold) { $issues += "WS=$($dwm.WS_MB)MB" }
         if ($dwm.Handles -gt $dwmHandleThreshold) { $issues += "Handles=$($dwm.Handles)" }
         if ($null -ne $dwm.Threads -and $dwm.Threads -gt $dwmThreadThreshold) { $issues += "Threads=$($dwm.Threads)" }
+        if ($null -ne $dwm.CpuPercent -and $dwm.CpuPercent -gt $dwmCpuThreshold) { $issues += "CPU=$($dwm.CpuPercent)%" }
         if ($dwm.FramesSkipped -gt 0) { $issues += "FramesSkipped=$($dwm.FramesSkipped)" }
         if ($issues.Count -gt 0) {
             $plan.ShouldRestartDwm = $true
@@ -111,6 +113,31 @@ function Get-DecisionPlan {
     $shellThreshold = if ($null -ne $th['shell_extensions_count']) { [int]$th['shell_extensions_count'] } else { 50 }
     if ($Diagnostics.ShellExtensionCount -and $Diagnostics.ShellExtensionCount -gt $shellThreshold) {
         $plan.Summary += "Shell extension count high: $($Diagnostics.ShellExtensionCount)"
+    }
+
+    # --- Metric 9: High CPU GPU / WebView2 processes ---
+    $gpuProcCpuThreshold = if ($null -ne $th['gpu_process_cpu_seconds']) { [int]$th['gpu_process_cpu_seconds'] } else { 3600 }
+    if ($Diagnostics.GpuProcesses) {
+        foreach ($gp in $Diagnostics.GpuProcesses) {
+            if ($gp.CpuSeconds -gt $gpuProcCpuThreshold) {
+                $msg = "$($gp.Name) (PID $($gp.Id), Parent: $($gp.Parent)): CPU=$($gp.CpuSeconds)s WS=$($gp.WS_MB)MB"
+                $plan.Level2Warnings += $msg
+                $plan.Summary += "High CPU GPU process: $msg"
+            }
+        }
+    }
+
+    # --- Metric 10: Virtual Display Adapters ---
+    $virtualDisplayThreshold = if ($null -ne $th['virtual_display_warning_count']) { [int]$th['virtual_display_warning_count'] } else { 1 }
+    if ($Diagnostics.VirtualDisplayAdapters) {
+        $activeVirtual = @($Diagnostics.VirtualDisplayAdapters | Where-Object { $_.ErrorCode -eq 0 -or $_.Status -eq 'OK' })
+        if ($activeVirtual.Count -ge $virtualDisplayThreshold) {
+            foreach ($v in $activeVirtual) {
+                $msg = "$($v.Name) (Device: $($v.DeviceID)) active"
+                $plan.Level2Warnings += $msg
+                $plan.Summary += "Active Virtual Display: $msg"
+            }
+        }
     }
 
     # --- Update restart decisions based on mode ---

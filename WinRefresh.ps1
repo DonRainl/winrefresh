@@ -183,11 +183,18 @@ try {
     Write-Host "  Total Handles: $($diag.TotalHandles) (threshold: $($diag.HandleThreshold))" -ForegroundColor Gray
     if ($diag.DwmMetrics) {
         $dwmThreadStr = if ($diag.DwmMetrics.Threads) { " Threads=$($diag.DwmMetrics.Threads)" } else { "" }
-        Write-Host "  DWM: WS=$($diag.DwmMetrics.WS_MB)MB Handles=$($diag.DwmMetrics.Handles)$dwmThreadStr FramesSkipped=$($diag.DwmMetrics.FramesSkipped)" -ForegroundColor Gray
+        $dwmCpuStr = if ($null -ne $diag.DwmMetrics.CpuPercent) { " CPU=$($diag.DwmMetrics.CpuPercent)%" } else { "" }
+        Write-Host "  DWM: WS=$($diag.DwmMetrics.WS_MB)MB Handles=$($diag.DwmMetrics.Handles)$dwmThreadStr$dwmCpuStr FramesSkipped=$($diag.DwmMetrics.FramesSkipped)" -ForegroundColor Gray
     }
     if ($diag.ExplorerMetrics) {
         $expThreadStr = if ($diag.ExplorerMetrics.Threads) { " Threads=$($diag.ExplorerMetrics.Threads)" } else { "" }
         Write-Host "  Explorer: GDI=$($diag.ExplorerMetrics.GDI) USER=$($diag.ExplorerMetrics.USER) Handles=$($diag.ExplorerMetrics.Handles)$expThreadStr WS=$($diag.ExplorerMetrics.WS_MB)MB" -ForegroundColor Gray
+    }
+    if ($diag.VirtualDisplayAdapters) {
+        $activeVirtual = @($diag.VirtualDisplayAdapters | Where-Object { $_.ErrorCode -eq 0 -or $_.Status -eq 'OK' })
+        if ($activeVirtual.Count -gt 0) {
+            Write-Host "  Virtual Displays: $($activeVirtual.Count) active adapter(s) detected" -ForegroundColor Yellow
+        }
     }
     Write-Host "  User state: $($diag.NotificationState), Idle: $($diag.UserIdleSeconds)s" -ForegroundColor Gray
     Write-Host ""
@@ -212,6 +219,7 @@ try {
 
     # Explorer restart
     $allowUnattendedExp = if ($null -ne $thresholdConfig['unattended_restart_explorer']) { [bool]$thresholdConfig['unattended_restart_explorer'] } else { $false }
+    $explorerRestarted = $false
 
     if ($plan.ShouldRestartExplorer -or $ForceExplorerRestart) {
         Update-LockPhase -Phase "ExplorerRestart" -Subphase "Starting"
@@ -220,6 +228,7 @@ try {
             $bypassExp = $BypassUserPresence -or $ForceExplorerRestart
             $result = Invoke-ExplorerRestart -BypassUserPresence:$bypassExp
             Write-Log -Level INFO -Operation "Main" -Message "Explorer restart result: $result"
+            if ($result -eq 'restarted') { $explorerRestarted = $true }
         } elseif ($allowUnattendedExp) {
             Write-Log -Level INFO -Operation "Main" -Message "Explorer needs restart (unattended allowed) — verifying safety guards"
             $protectedApps = if ($null -ne $cleanupConfig['protected_processes']) {
@@ -252,7 +261,7 @@ try {
         if ($IsManual) {
             Write-Log -Level INFO -Operation "Main" -Message "DWM needs restart — executing"
             $bypassDwm = $BypassUserPresence -or $ForceDwmRestart
-            $result = Invoke-DwmRestart -OverrideCoolDown ($OverrideCoolDown -or $ForceDwmRestart) -BypassUserPresence:$bypassDwm
+            $result = Invoke-DwmRestart -OverrideCoolDown ($OverrideCoolDown -or $ForceDwmRestart) -BypassUserPresence:$bypassDwm -NoCountdown:$explorerRestarted
             Write-Log -Level INFO -Operation "Main" -Message "DWM restart result: $result"
         } else {
             Write-Log -Level WARN -Operation "Main" -Message "DWM needs restart (unattended — skipped)"

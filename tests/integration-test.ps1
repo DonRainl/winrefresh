@@ -1,4 +1,4 @@
-# Cross-module integration test
+﻿# Cross-module integration test
 # Verifies all modules can be dot-sourced together and function deps resolve
 $ErrorActionPreference = 'Stop'
 
@@ -69,7 +69,7 @@ $requiredFunctions = @(
     'Initialize-Diagnostics', 'Get-SystemDiagnostics', 'Get-AdaptiveThresholds',
     'Get-UserIdleSeconds', 'Get-UserNotificationState', 'Get-TopGdiUserProcesses',
     'Get-ExplorerMetrics', 'Get-DwmMetrics',
-    'Invoke-AtomicOperation', 'Invoke-Level1Cleanup', 'Restart-AudioService', 'Invoke-ExplorerRestart',
+    'Invoke-AtomicOperation', 'Invoke-Level1Cleanup', 'Restart-AudioService', 'Optimize-DwmMpo', 'Invoke-ExplorerRestart',
     'Invoke-DwmRestart', 'Write-Level3Warning', 'Test-UserPresent', 'Test-FileCopyInProgress',
     'Get-DecisionPlan'
 )

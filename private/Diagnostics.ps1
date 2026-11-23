@@ -1,4 +1,4 @@
-# Diagnostics.ps1 — 9 diagnostic metrics collection with P/Invoke
+# Diagnostics.ps1 — 11 diagnostic metrics collection with P/Invoke
 # Functions: Initialize-Diagnostics, Get-SystemDiagnostics, Get-AdaptiveThresholds
 
 # Compile P/Invoke type once
@@ -173,7 +173,18 @@ function Get-DwmMetrics {
 
     $skipped = 0
     $dwmThreads = 0
+    $dwmCpu = $null
     try { $dwmThreads = $dwm.Threads.Count } catch {}
+    try {
+        $cpuCounter = Get-Counter -Counter '\Process(dwm*)\% Processor Time' -ErrorAction Stop
+        if ($cpuCounter -and $cpuCounter.CounterSamples) {
+            foreach ($sample in $cpuCounter.CounterSamples) {
+                if ($null -eq $dwmCpu -or $sample.CookedValue -gt $dwmCpu) {
+                    $dwmCpu = [math]::Round($sample.CookedValue, 1)
+                }
+            }
+        }
+    } catch {}
     try {
         # Enumerate ALL counter sets and match by PATH pattern — set NAMES are localised
         # ("Desktop Window Manager" → "Desktopfenster-Manager" on German Windows).
@@ -203,7 +214,65 @@ function Get-DwmMetrics {
         Threads       = $dwmThreads
         WS_MB         = [math]::Round($dwm.WorkingSet64 / 1MB, 1)
         FramesSkipped = $skipped
+        CpuPercent    = $dwmCpu
     }
+}
+
+function Get-HighCpuGpuProcesses {
+    $results = @()
+    try {
+        $gpuProcs = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%--type=gpu-process%'" -ErrorAction SilentlyContinue
+        if ($gpuProcs) {
+            foreach ($gp in $gpuProcs) {
+                if ($gp.Name -eq 'powershell.exe') { continue }
+                $proc = Get-Process -Id $gp.ProcessId -ErrorAction SilentlyContinue
+                if ($proc) {
+                    $cpuSec = 0
+                    try { $cpuSec = $proc.TotalProcessorTime.TotalSeconds } catch {}
+                    $parent = Get-Process -Id $gp.ParentProcessId -ErrorAction SilentlyContinue
+                    $parentName = if ($parent) { $parent.ProcessName } else { "PID $($gp.ParentProcessId)" }
+                    $wsMB = 0
+                    try { $wsMB = [math]::Round($proc.WorkingSet64 / 1MB, 1) } catch {}
+
+                    $results += [PSCustomObject]@{
+                        Id         = $gp.ProcessId
+                        Name       = $gp.Name
+                        Parent     = $parentName
+                        CpuSeconds = [math]::Round($cpuSec, 1)
+                        WS_MB      = $wsMB
+                    }
+                }
+            }
+        }
+    } catch {}
+    return $results
+}
+
+function Get-VirtualDisplayAdapters {
+    $results = @()
+    try {
+        $adapters = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue
+        if ($adapters) {
+            foreach ($a in $adapters) {
+                $name = $a.Name
+                $pnp = $a.PNPDeviceID
+                $isVirtual = $false
+                if ($name -match 'Virtual|GameViewer|IddCx|Parsec|Sunshine|ToDesk|Sunlogin|Oray|AnyDesk|TeamViewer|USB Display|LDisplay' -or
+                    $pnp -match '^ROOT\\DISPLAY' -or $a.AdapterCompatibility -match 'GameViewer|Virtual') {
+                    $isVirtual = $true
+                }
+                if ($isVirtual) {
+                    $results += [PSCustomObject]@{
+                        Name      = $name
+                        Status    = $a.Status
+                        DeviceID  = $pnp
+                        ErrorCode = [int]$a.ConfigManagerErrorCode
+                    }
+                }
+            }
+        }
+    } catch {}
+    return $results
 }
 
 function Get-NonPagedPoolMB {
@@ -308,31 +377,35 @@ function Get-SystemDiagnostics {
     Initialize-Diagnostics
 
     return [PSCustomObject]@{
-        Timestamp           = Get-Date -Format 'o'
-        Uptime              = Get-SystemUptime
-        TotalRAM_GB         = $Thresholds.RamGB
+        Timestamp              = Get-Date -Format 'o'
+        Uptime                 = Get-SystemUptime
+        TotalRAM_GB            = $Thresholds.RamGB
         # Metric 1: Top GDI/USER processes
-        TopGuiProcesses     = Get-TopGdiUserProcesses | Select-Object -First 10
+        TopGuiProcesses        = Get-TopGdiUserProcesses | Select-Object -First 10
         # Metric 2: Total handles
-        TotalHandles        = Get-TotalHandleCount
-        HandleThreshold     = $Thresholds.HandleThreshold
+        TotalHandles           = Get-TotalHandleCount
+        HandleThreshold        = $Thresholds.HandleThreshold
         # Metric 3: Non-Paged Pool
-        NonPagedPoolMB      = Get-NonPagedPoolMB
+        NonPagedPoolMB         = Get-NonPagedPoolMB
         # Metric 4: DWM health
-        DwmMetrics          = Get-DwmMetrics
+        DwmMetrics             = Get-DwmMetrics
         # Metric 5: Explorer
-        ExplorerMetrics     = Get-ExplorerMetrics
+        ExplorerMetrics        = Get-ExplorerMetrics
         # Metric 6: Free PTE (now correctly in bytes→MB)
-        FreeSystemPTE_MB    = Get-FreeSystemPteMB
-        PteThreshold        = $Thresholds.PteThreshold
+        FreeSystemPTE_MB       = Get-FreeSystemPteMB
+        PteThreshold           = $Thresholds.PteThreshold
         # Metric 7: GPU VRAM
-        GpuVram             = Get-GpuVramUsage
+        GpuVram                = Get-GpuVramUsage
         # Metric 8: Shell extensions (now HKLM + Wow6432Node + HKCU)
-        ShellExtensionCount = Get-ShellExtensionCount
+        ShellExtensionCount    = Get-ShellExtensionCount
         # Metric 9: Standby list
-        StandbyListMB       = Get-StandbyListMB
+        StandbyListMB          = Get-StandbyListMB
+        # Metric 10: GPU helper processes (WebView2/Electron/Browser)
+        GpuProcesses           = Get-HighCpuGpuProcesses
+        # Metric 11: Virtual display adapters (IddCx/Remote display endpoints)
+        VirtualDisplayAdapters = Get-VirtualDisplayAdapters
         # User state
-        UserIdleSeconds     = Get-UserIdleSeconds
-        NotificationState   = Get-UserNotificationState
+        UserIdleSeconds        = Get-UserIdleSeconds
+        NotificationState      = Get-UserNotificationState
     }
 }

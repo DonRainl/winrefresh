@@ -4,9 +4,12 @@
         "gdi_per_process": 9000,
         "user_per_process": 9000,
         "non_paged_pool_mb": 2048,
-        "dwm_working_set_mb": 1024,
-        "dwm_handles": 5000,
-        "dwm_threads": 100,
+        "dwm_working_set_mb": 500,
+        "dwm_handles": 2500,
+        "dwm_threads": 80,
+        "dwm_cpu_percent": 50,
+        "gpu_process_cpu_seconds": 3600,
+        "virtual_display_warning_count": 1,
         "explorer_gdi": 9000,
         "explorer_handles": 5000,
         "explorer_threads": 150,
@@ -17,6 +20,7 @@
         "unattended_restart_explorer": true
     },
     "cleanup": {
+        "disable_mpo": true,
         "temp_min_age_hours": 24,
         "temp_min_size_mb": 500,
         "thumbnail_cache_interval_days": 30,
